@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>CodeBlocks &#8212; GUI Mockup</title>
+    <style>
+body {
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.cont {
+  width: 224px;
+  height: 136px;
+  display: inline-block;
+  margin-right: 10px;
+  margin-bottom: 10px;
+  border: 2px solid black;
+}
+
+.name {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.body {
+  width: 200px;
+  height: 100px;
+  margin-left: 10px;
+  border: 2px solid black;
+  background-color: #ddd;
+}
+
+.fixed {
+  border-left-style: solid;
+  border-right-style: solid;
+}
+
+.movable {
+  border-left-style: dashed;
+  border-right-style: dashed;
+}
+
+.left {
+  width: 40px;
+  height: 100%;
+  border-left-width: 0;
+  border-right-width: 2px;
+  background-color: #ccc;
+}
+
+.right {
+  position: relative;
+  left: 0;
+  width: 40px;
+  height: 100%;
+  border-left-width: 2px;
+  border-right-width: 0;
+  background-color: #ccc;
+}
+
+.checkbox-box {
+  padding: 2px 6px 2px 6px;
+  width: max-content;
+  height: min-content;
+  border: 2px solid black;
+  border-radius: 6px;
+}
+
+#crosshair-h {
+  position: absolute;
+  left: 0;
+  top: -100px;
+  width: 1000%;
+  height: 2px;
+  background-color: #282;
+}
+
+#crosshair-v {
+  position: absolute;
+  left: -100px;
+  top: 0;
+  width: 2px;
+  height: 1000%;
+  background-color: #282;
+}
+    </style>
+  </head>
+  <body>
+    <div class="cont">
+      <div class="name">Fixed&#8212;Size&#8212;Left</div>
+      <div class="body">
+        <div class="fixed left"></div>
+      </div>
+    </div>
+    <div class="cont">
+      <div class="name">Fixed&#8212;Size&#8212;Right</div>
+      <div class="body">
+        <div class="fixed right" id="fsr"></div>
+      </div>
+    </div>
+    <div class="cont">
+      <div class="name">Fixed&#8212;Proportion&#8212;Left</div>
+      <div class="body">
+        <div class="fixed left" id="fpl"></div>
+      </div>
+    </div>
+    <div class="cont">
+      <div class="name">Fixed&#8212;Proportion&#8212;Right</div>
+      <div class="body">
+        <div class="fixed right" id="fpr"></div>
+      </div>
+    </div>
+    <br/>
+    <div class="cont">
+      <div class="name">Movable&#8212;Size&#8212;Left</div>
+      <div class="body">
+        <div class="movable left" id="msl"></div>
+      </div>
+    </div>
+    <div class="cont">
+      <div class="name">Movable&#8212;Size&#8212;Right</div>
+      <div class="body">
+        <div class="movable right" id="msr"></div>
+      </div>
+    </div>
+    <div class="cont">
+      <div class="name">Movable&#8212;Proportion&#8212;Left</div>
+      <div class="body">
+        <div class="movable left" id="mpl"></div>
+      </div>
+    </div>
+    <div class="cont">
+      <div class="name">Movable&#8212;Proportion&#8212;Right</div>
+      <div class="body">
+        <div class="movable right" id="mpr"></div>
+      </div>
+    </div>
+    <br/>
+    <div class="checkbox-box">
+      <label for="body-moving">Body Moving?</label>
+      <input type="checkbox" id="body-moving" checked="true"></input>
+    </div>
+    <div id="crosshair-h"></div>
+    <div id="crosshair-v"></div>
+  </body>
+  <script>
+function getid(s) {
+  return document.getElementById(s);
+}
+function getclasses(s) {
+  return document.getElementsByClassName(s);
+}
+
+var bodies = getclasses("body");
+
+var fsl = getid("fsl");
+var fsr = getid("fsr");
+var fpl = getid("fpl");
+var fpr = getid("fpr");
+var msl = getid("msl");
+var msr = getid("msr");
+var mpl = getid("mpl");
+var mpr = getid("mpr");
+
+function getbx(e) {
+  return e.parentElement.getBoundingClientRect().left;
+}
+function getby(e) {
+  return e.parentElement.getBoundingClientRect().top;
+}
+
+var mslbx = getbx(msl);
+var msrbx = getbx(msr);
+var mplbx = getbx(mpl);
+var mprbx = getbx(mpr);
+var mslby = getby(msl);
+var msrby = getby(msr);
+var mplby = getby(mpl);
+var mprby = getby(mpr);
+
+var msls = 40;
+var msrs = 40;
+var mplp = .35;
+var mprp = .35;
+
+var crossh = getid("crosshair-h");
+var crossv = getid("crosshair-v");
+var hascross = false;
+crossv.style.left = -100 + "px";
+crossh.style.top = -100 + "px";
+
+var mt = -1;
+var md = false;
+var mdf = false;
+var msx = 0;
+var msw = 0;
+var mts = 0;
+var mx = 0;
+var my = 0;
+function onmousedown(e) {
+  e.preventDefault();
+  mt = -1;
+  md = true;
+  mdf = true;
+  mx = e.clientX;
+  my = e.clientY;
+}
+function onmousemove(e) {
+  e.preventDefault();
+  mx = e.clientX;
+  my = e.clientY;
+  if (md && hascross) {
+    crossv.style.left = (mx - 1) + "px";
+    crossh.style.top = (my - 1) + "px";
+  }
+}
+function onmouseup(e) {
+  e.preventDefault();
+  mt = -1;
+  md = false;
+  mx = e.clientX;
+  my = e.clientY;
+  crossv.style.left = -100 + "px";
+  crossh.style.top = -100 + "px";
+}
+window.addEventListener('mousedown', onmousedown, false);
+window.addEventListener('mousemove', onmousemove, false);
+window.addEventListener('mouseup', onmouseup, false);
+// Mobile Support
+function noop() {}
+var tt = -1;
+window.addEventListener('touchstart', function(e) {
+  //e.preventDefault();
+  if (tt === -1 && e.touches.length !== 0) {
+    var touch = e.touches[0];
+    tt = touch.identifier;
+    hascross = true;
+    var e = {preventDefault: noop,
+      clientX: touch.pageX, clientY: touch.pageY};
+    onmousedown(e);
+  }
+}, false);
+window.addEventListener('touchmove', function(e) {
+  if (mt !== -1) { e.preventDefault(); }
+  else { hascross = false; 
+  crossv.style.left = -100 + "px";
+  crossh.style.top = -100 + "px";}
+  if (tt !== -1 && e.touches.length !== 0) {
+    var touch = null;
+    for (var i = 0; i < e.touches.length; i++) {
+      if (e.touches[i].identifier == tt) {
+        touch = e.touches[i];
+      }
+    }
+    if (touch == null) {
+      tt = -1;
+    } else {
+      var e = {preventDefault: noop,
+        clientX: touch.pageX, clientY: touch.pageY};
+      onmousemove(e);
+    }
+  }
+}, {passive:false});
+window.addEventListener('touchend', function(e) {
+  //e.preventDefault();
+  if (tt !== -1) {
+    var touch = null;
+    for (var i = 0; i < e.touches.length; i++) {
+      if (e.touches[i].identifier == tt) {
+        touch = e.touches[i];
+      }
+    }
+
+    if (touch == null) {
+      tt = -1;
+      hascross = false;
+      var e = {preventDefault: noop,
+        clientX: mx, clientY: my};
+      onmouseup(e);
+    }
+  }
+}, false);
+window.addEventListener('touchcancel', function(e) {
+  tt = -1;
+});
+
+function clamp(x, a, b) {
+  if (x < a) { x = a; }
+  else if (x > b) { x = b; }
+  return x;
+}
+
+var bodymoving = true;
+var bodymovingelem = getid("body-moving");
+bodymovingelem.addEventListener("change", function() {
+  bodymoving = bodymovingelem.checked;
+});
+
+var i = 0;
+var abs = Math.abs;
+var thres = 30;
+function loop() {
+  if (bodymoving) { i = (i + 1) % 400; }
+  var a = i / 400 * Math.PI * 2;
+
+  var bodywidth = 150 + Math.cos(a) * 50;
+  for (var j = 0; j < bodies.length; j++) {
+    bodies[j].style.width = bodywidth + "px";
+  }
+
+  var swidth = 40;
+  var pwidth = bodywidth * .35;
+  fpl.style.width = pwidth + "px";
+  fpr.style.width = pwidth + "px";
+
+  var fsrx = bodywidth - 42;
+  fsr.style.left = fsrx + "px";
+  var fprx = bodywidth - pwidth - 2;
+  fpr.style.left = fprx + "px";
+
+  msl.style.width = msls + "px";
+  msls = clamp(msls, 0, bodywidth);
+  msr.style.width = msrs + "px";
+  msrs = clamp(msrs, 0, bodywidth);
+  var msrx = bodywidth - msrs - 2;
+  msr.style.left = msrx + "px";
+  var mplw = bodywidth * mplp;
+  mpl.style.width = mplw + "px";
+  var mprw = bodywidth * mprp;
+  mpr.style.width = mprw + "px";
+  var mprx = bodywidth - mprw - 2;
+  mpr.style.left = mprx + "px";
+
+  if (!mdf && md) {
+    if (mt == 1) {
+      msls = clamp(
+        mts + (mx - msx),
+        0, bodywidth);
+    } else if (mt == 2) {
+      msrs = clamp(
+        mts - (mx - msx) + (bodywidth - msw),
+        0, bodywidth);
+    } else if (mt == 3) {
+      mplp = clamp(
+        (mts + (mx - msx)) / bodywidth,
+        0, 1);
+    } else if (mt == 4) {
+      mprp = clamp(
+        (mts - (mx - msx) + (bodywidth - msw)) / bodywidth,
+        0, 1);
+    }
+  } else if (mdf) {
+    mdf = false;
+    if (my >= mslby && my <= mslby + 100 && abs(mx - (mslbx + msls)) < thres) {
+      mt = 1;
+      msx = mslbx + msls;
+      mts = msls;
+      msw = bodywidth;
+    } else if (my >= msrby && my <= msrby + 100 && abs(mx - (msrbx + msrx)) < thres) {
+      mt = 2;
+      msx = msrbx + msrx;
+      mts = msrs;
+      msw = bodywidth;
+    } else if (my >= mplby && my <= mplby + 100 && abs(mx - (mplbx + mplw)) < thres) {
+      mt = 3;
+      msx = mplbx + mplw;
+      mts = mplp * bodywidth;
+      msw = bodywidth;
+    } else if (my >= mprby && my <= mprby + 100 && abs(mx - (mprbx + mprx)) < thres) {
+      mt = 4;
+      msx = mprbx + mprx;
+      mts = mprp * bodywidth;
+      msw = bodywidth;
+    }
+  }
+
+  requestAnimationFrame(loop);
+};
+
+loop();
+  </script>
+</html>

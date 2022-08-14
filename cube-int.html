@@ -210,6 +210,7 @@ const controls_camera = camera;
 
 const controls = new THREE.OrbitControls(controls_camera, renderer.domElement);
 controls.enableZoom = false;
+controls.enablePan = false;
 
 const gl = renderer.getContext();
 

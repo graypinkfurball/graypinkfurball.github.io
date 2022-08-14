@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Non-Euclidean Cube</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+window.require = function(s) {
+  if (s === "three") { return THREE; }
+  throw new Error("Unexpected require statement");
+}
+
+window.exports = {};
+window.module = {exports};
+    </script>
+    <script  src="https://cdn.jsdelivr.net/npm/three-orbitcontrols@2.110.3/OrbitControls.min.js"></script>
+    <script>
+delete window.require;
+delete window.exports;
+delete window.module;
+    </script>
+    <style>
+body {
+  margin: 0;
+}
+
+canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+    </style>
+  </head>
+  <body>
+    <script>
+// Non-Euclidean Cube
+
+/*
+Copyright © 2022 graypinkfurball
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the “Software”), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+/* jshint esnext:true */
+
+function create_mat(color) {
+  const r = (color >> 16) / 15;
+  const g = (color >> 8 & 0xff) / 15;
+  const b = (color & 0xff) / 15;
+  const mat_color = r*4<<16 | g*4<<8 | b*4;
+  const mat_emissive = r*11<<16 | g*11<<8 | b*11;
+  return new THREE.MeshPhongMaterial({
+    color: mat_color, emissive: mat_emissive, specular: 0});
+}
+
+function create_box(x1, y1, z1, x2, y2, z2, mat) {
+  const geom = new THREE.BoxGeometry(x2-x1, y2-y1, z2-z1);
+  const box = new THREE.Mesh(geom, mat);
+  box.position.set((x1+x2)/2-0.5, (y1+y2)/2-0.5, (z1+z2)/2-0.5);
+  return box;
+}
+
+function create_plane(x1, y1, x2, y2, z, mat) {
+  const geom = new THREE.PlaneGeometry(x2-x1, y2-y1);
+  const plane = new THREE.Mesh(geom, mat);
+  plane.position.set((x1+x2)/2-0.5, (x1+y2)/2-0.5, z-0.5);
+  return plane;
+}
+
+const white_mat = create_mat(0xd8d8d8);
+const pink_mat = create_mat(0xfe90c9);
+const light_blue_mat = create_mat(0x03a9f4);
+const full_white_mat = create_mat(0xffffff);
+const dark_gray_mat = create_mat(0x808080);
+const yellow_mat = create_mat(0xfef250);
+const red_mat = create_mat(0xe60000);
+
+function create_room(rx, ry, rz, mat) {
+  const boxes = new THREE.Object3D();
+  boxes.add(create_box(    0,    0,   -1,   1,   1,-7/8, mat));
+  boxes.add(create_box(    0,    0,   -1,1/8,   1, 7/8, mat));
+  boxes.add(create_box(7/8,    0,   -1,   1,   1, 7/8, mat));
+  boxes.add(create_box(    0,    0,   -1,   1,1/8, 7/8, mat));
+  boxes.add(create_box(    0,7/8,   -1,   1,   1, 7/8, mat));
+  boxes.add(create_box(    0,    0,7/8,1/8,   1,     1, white_mat));
+  boxes.add(create_box(7/8,    0,7/8,   1,   1,     1, white_mat));
+  boxes.add(create_box(    0,    0,7/8,   1,1/8,     1, white_mat));
+  boxes.add(create_box(    0,7/8,7/8,   1,   1,     1, white_mat));
+  boxes.rotation.set(rx, ry, rz);
+
+  const mask = new THREE.Object3D();
+  mask.add(create_plane(0, 0, 1, 1, 1, white_mat));
+  mask.rotation.set(rx, ry, rz);
+
+  return {boxes, mask};
+}
+
+const right = -Math.PI / 2;
+function create_rooms() {
+  const rooms = [];
+  rooms[0] = create_room(     0,       0, 0, pink_mat);
+  rooms[1] = create_room(     0,   right, 0, light_blue_mat);
+  rooms[2] = create_room(     0, 2*right, 0, full_white_mat);
+  rooms[3] = create_room(     0, 3*right, 0, dark_gray_mat);
+  rooms[4] = create_room( right,       0, 0, yellow_mat);
+  rooms[5] = create_room(-right,       0, 0, red_mat);
+  return rooms;
+}
+
+const light = new THREE.PointLight(0xffffff, 1.0, 0);
+const camera = new THREE.PerspectiveCamera(70, 1, 0.01, 100);
+camera.position.z = -1.5;
+camera.lookAt(new THREE.Vector3(0,0,0));
+camera.add(light);
+
+function create_camera(scene) {
+  return new Proxy(camera, {});
+}
+
+function create_scene(object) {
+  const scene = new THREE.Scene();
+  const camera = create_camera(scene);
+  scene.add(object);
+  scene.add(camera);
+  return scene;
+}
+
+function create_room_scene(room) {
+  const boxes = create_scene(room.boxes);
+  const mask = create_scene(room.mask);
+  return {boxes, mask};
+}
+
+function create_room_scenes() {
+  const scenes = [];
+  const rooms = create_rooms();
+  for (let i = 0; i < rooms.length; i++) {
+    scenes[i] = create_room_scene(rooms[i]);
+  }
+  return scenes;
+}
+
+const room_scenes = create_room_scenes();
+
+const renderer = new THREE.WebGLRenderer({alpha: true});
+renderer.autoClear = false;
+renderer.setSize(256, 256);
+document.body.appendChild(renderer.domElement);
+/*
+// crucial functions: lookAt, updateWorldMatrix, updateMatrix
+const noop = function() {};
+const proxies = {};
+const controls_camera = new Proxy(camera, {
+  get(target, property) {
+    const value = target[property];
+    const type = typeof(value);
+    if (type !== "function" && type !== "object") {
+      console.log(`get ${property} of type ${type}`);
+    }
+    if (type === "object") {
+      //console.log(`=== object ${property}`);
+      const thisproperty = property;
+      const obj = target[property];
+      let proxy = proxies[property];
+      if (!proxy) {
+        proxy = new Proxy(obj, {
+          get(target, property) {
+            const value = target[property];
+            console.log(`get ${property} of ${thisproperty} is ${value}`);
+            return value;
+          },
+          set(target, property, value) {
+            if (thisproperty === "property") { return true; }
+            console.log(`set ${property} of ${thisproperty} to ${value}`);
+            target[property] = value;
+            return true;
+          }
+        });
+        proxies[property] = proxy;
+      }
+      return proxy;
+    } else if (type === "function") {
+      //console.log(`=== function ${property}`);
+      if (property !== "lookAt" && property !== "updateWorldMatrix" && property !== "updateMatrix") {
+        return noop;
+      }
+    }
+    return value;
+  }
+});
+*/
+const controls_camera = camera;
+
+const controls = new THREE.OrbitControls(controls_camera, renderer.domElement);
+controls.enableZoom = false;
+
+const gl = renderer.getContext();
+
+function render_room_scene(room_scene) {
+  gl.enable(gl.STENCIL_TEST);
+  gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
+
+  gl.stencilFunc(gl.ALWAYS, 1, 0xFF);
+  gl.stencilMask(0xFF);
+
+  const mask_scene = room_scene.mask;
+  renderer.render(mask_scene, camera);
+  renderer.clearDepth();
+
+  gl.stencilFunc(gl.EQUAL, 1, 0xFF);
+  gl.stencilMask(0x00);
+
+  const boxes_scene = room_scene.boxes;
+  renderer.render(boxes_scene, camera);
+  renderer.clearDepth();
+
+  gl.stencilMask(0xFF);
+  gl.disable(gl.STENCIL_TEST);
+
+  renderer.clearStencil();
+}
+
+function render() {
+  requestAnimationFrame(render);
+
+  renderer.clear();
+  for (let i = 0; i < room_scenes.length; i++) {
+    render_room_scene(room_scenes[i]);
+  }
+}
+
+const borderStyle = "2px solid black";
+function resize() {
+  const style = renderer.domElement.style;
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  if (width < height) {
+    renderer.setSize(width, width);
+    style.left = 0 + 'px';
+    style.top = ((height - width) >> 1) + 'px';
+    style.borderLeft = '';
+    style.borderRight = '';
+    style.borderTop = borderStyle;
+    style.borderBottom = borderStyle;
+  } else if (height < width) {
+    renderer.setSize(height, height);
+    style.left = ((width - height) >> 1) + 'px';
+    style.top = 0 + 'px';
+    style.borderLeft = borderStyle;
+    style.borderRight = borderStyle;
+    style.borderTop = '';
+    style.borderBottom = '';
+  } else {
+    renderer.setSize(width, height);
+    style.left = 0 + 'px';
+    style.top = 0 + 'px';
+    style.borderLeft = '';
+    style.borderRight = '';
+    style.borderTop = '';
+    style.borderBottom = '';
+  }
+}
+
+window.addEventListener('resize', resize, false);
+resize();
+render();
+    </script>
+  </body>
+</html>

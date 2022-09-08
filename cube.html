@@ -2,165 +2,516 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width">
-    <title>Non-Euclidean Cube</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <title>It's Impossible</title>
     <style>
-body {
-  margin: 0;
-}
-
 canvas {
+  width: 100%;
+  height: 100%;
   position: absolute;
   left: 0;
   top: 0;
+  z-index: 1;
+}
+
+#quality-label {
+  font-family: monospace;
+  font-size: 20px;
+  position: absolute;
+  right: 15px;
+  top: 5px;
+  z-index: 2;
+}
+
+#quality {
+  position: absolute;
+  right: 30px;
+  top: 5px;
+  z-index: 2;
 }
     </style>
   </head>
   <body>
+    <label id="quality-label" for="quality">4</label>
+    <input type="range" name="quality" id="quality" min="1" max="9" value="6">
     <script>
-// Non-Euclidean Cube
+class Mat4 {
+  a;
 
-/*
-Copyright © 2022 graypinkfurball
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the “Software”), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
-/* jshint esnext:true */
-
-function create_mat(color) {
-  const r = (color >> 16) / 15;
-  const g = (color >> 8 & 0xff) / 15;
-  const b = (color & 0xff) / 15;
-  const mat_color = r*4<<16 | g*4<<8 | b*4;
-  const mat_emissive = r*11<<16 | g*11<<8 | b*11;
-  return new THREE.MeshPhongMaterial({
-    color: mat_color, emissive: mat_emissive, specular: 0});
-}
-
-function create_box(x1, y1, z1, x2, y2, z2, mat) {
-  const geom = new THREE.BoxGeometry(x2-x1, y2-y1, z2-z1);
-  const box = new THREE.Mesh(geom, mat);
-  box.position.set((x1+x2)/2-0.5, (y1+y2)/2-0.5, (z1+z2)/2-0.5);
-  return box;
-}
-
-function create_plane(x1, y1, x2, y2, z, mat) {
-  const geom = new THREE.PlaneGeometry(x2-x1, y2-y1);
-  const plane = new THREE.Mesh(geom, mat);
-  plane.position.set((x1+x2)/2-0.5, (x1+y2)/2-0.5, z-0.5);
-  return plane;
-}
-
-const white_mat = create_mat(0xd8d8d8);
-const pink_mat = create_mat(0xfe90c9);
-const light_blue_mat = create_mat(0x03a9f4);
-const full_white_mat = create_mat(0xffffff);
-const dark_gray_mat = create_mat(0x808080);
-const yellow_mat = create_mat(0xfef250);
-const red_mat = create_mat(0xe60000);
-
-function create_room(rx, ry, rz, mat) {
-  const boxes = new THREE.Object3D();
-  boxes.add(create_box(    0,    0,   -1,   1,   1,-7/8, mat));
-  boxes.add(create_box(    0,    0,   -1,1/8,   1, 7/8, mat));
-  boxes.add(create_box(7/8,    0,   -1,   1,   1, 7/8, mat));
-  boxes.add(create_box(    0,    0,   -1,   1,1/8, 7/8, mat));
-  boxes.add(create_box(    0,7/8,   -1,   1,   1, 7/8, mat));
-  boxes.add(create_box(    0,    0,7/8,1/8,   1,     1, white_mat));
-  boxes.add(create_box(7/8,    0,7/8,   1,   1,     1, white_mat));
-  boxes.add(create_box(    0,    0,7/8,   1,1/8,     1, white_mat));
-  boxes.add(create_box(    0,7/8,7/8,   1,   1,     1, white_mat));
-  boxes.rotation.set(rx, ry, rz);
-
-  const mask = new THREE.Object3D();
-  mask.add(create_plane(0, 0, 1, 1, 1, white_mat));
-  mask.rotation.set(rx, ry, rz);
-
-  return {boxes, mask};
-}
-
-const right = -Math.PI / 2;
-function create_rooms() {
-  const rooms = [];
-  rooms[0] = create_room(     0,       0, 0, pink_mat);
-  rooms[1] = create_room(     0,   right, 0, light_blue_mat);
-  rooms[2] = create_room(     0, 2*right, 0, full_white_mat);
-  rooms[3] = create_room(     0, 3*right, 0, dark_gray_mat);
-  rooms[4] = create_room( right,       0, 0, yellow_mat);
-  rooms[5] = create_room(-right,       0, 0, red_mat);
-  return rooms;
-}
-
-function create_camera() {
-  const light = new THREE.PointLight(0xffffff, 1.0, 0);
-  const camera = new THREE.PerspectiveCamera(70, 1, 0.01, 100);
-  camera.position.z = -1.5;
-  camera.rotation.y = Math.PI;
-  camera.add(light);
-
-  const pivot = new THREE.Object3D();
-  pivot.add(camera);
-
-  return [camera, pivot];
-}
-
-function create_scene(object) {
-  const [camera, pivot] = create_camera();
-  const scene = new THREE.Scene();
-  scene.add(object);
-  scene.add(pivot);
-  return {camera, pivot, scene};
-}
-
-function create_room_scene(room) {
-  const boxes = create_scene(room.boxes);
-  const mask = create_scene(room.mask);
-  return {boxes, mask};
-}
-
-function create_room_scenes() {
-  const scenes = [];
-  const rooms = create_rooms();
-  for (let i = 0; i < rooms.length; i++) {
-    scenes[i] = create_room_scene(rooms[i]);
+  constructor() {
+    this.a = new Float32Array(16);
   }
-  return scenes;
+
+  copy(other) {
+    const a = this.a, b = other.a,
+      x1 = b[ 0], x2 = b[ 1], x3 = b[ 2], x4 = b[ 3],
+      y1 = b[ 4], y2 = b[ 5], y3 = b[ 6], y4 = b[ 7],
+      z1 = b[ 8], z2 = b[ 9], z3 = b[10], z4 = b[11],
+      w1 = b[12], w2 = b[13], w3 = b[14], w4 = b[15];
+    a[ 0] = x1; a[ 1] = x2; a[ 2] = x3; a[ 3] = x4;
+    a[ 4] = y1; a[ 5] = y2; a[ 6] = y3; a[ 7] = y4;
+    a[ 8] = z1; a[ 9] = z2; a[10] = z3; a[11] = z4;
+    a[12] = w1; a[13] = w2; a[14] = w3; a[15] = w4;
+  }
+
+  multiply(other) {
+    const a = this.a, b = other.a,
+      ax1 = a[ 0], ax2 = a[ 1], ax3 = a[ 2], ax4 = a[ 3],
+      ay1 = a[ 4], ay2 = a[ 5], ay3 = a[ 6], ay4 = a[ 7],
+      az1 = a[ 8], az2 = a[ 9], az3 = a[10], az4 = a[11],
+      aw1 = a[12], aw2 = a[13], aw3 = a[14], aw4 = a[15],
+      bx1 = b[ 0], bx2 = b[ 1], bx3 = b[ 2], bx4 = b[ 3],
+      by1 = b[ 4], by2 = b[ 5], by3 = b[ 6], by4 = b[ 7],
+      bz1 = b[ 8], bz2 = b[ 9], bz3 = b[10], bz4 = b[11],
+      bw1 = b[12], bw2 = b[13], bw3 = b[14], bw4 = b[15];
+    a[ 0] = ax1 * bx1 + ay1 * bx2 + az1 * bx3 + aw1 * bx4;
+    a[ 1] = ax2 * bx1 + ay2 * bx2 + az2 * bx3 + aw2 * bx4;
+    a[ 2] = ax3 * bx1 + ay3 * bx2 + az3 * bx3 + aw3 * bx4;
+    a[ 3] = ax4 * bx1 + ay4 * bx2 + az4 * bx3 + aw4 * bx4;
+    a[ 4] = ax1 * by1 + ay1 * by2 + az1 * by3 + aw1 * by4;
+    a[ 5] = ax2 * by1 + ay2 * by2 + az2 * by3 + aw2 * by4;
+    a[ 6] = ax3 * by1 + ay3 * by2 + az3 * by3 + aw3 * by4;
+    a[ 7] = ax4 * by1 + ay4 * by2 + az4 * by3 + aw4 * by4;
+    a[ 8] = ax1 * bz1 + ay1 * bz2 + az1 * bz3 + aw1 * bz4;
+    a[ 9] = ax2 * bz1 + ay2 * bz2 + az2 * bz3 + aw2 * bz4;
+    a[10] = ax3 * bz1 + ay3 * bz2 + az3 * bz3 + aw3 * bz4;
+    a[11] = ax4 * bz1 + ay4 * bz2 + az4 * bz3 + aw4 * bz4;
+    a[12] = ax1 * bw1 + ay1 * bw2 + az1 * bw3 + aw1 * bw4;
+    a[13] = ax2 * bw1 + ay2 * bw2 + az2 * bw3 + aw2 * bw4;
+    a[14] = ax3 * bw1 + ay3 * bw2 + az3 * bw3 + aw3 * bw4;
+    a[15] = ax4 * bw1 + ay4 * bw2 + az4 * bw3 + aw4 * bw4;
+    return this;
+  }
+
+  translate(tx, ty, tz) {
+    const a = this.a,
+      x1 = a[ 0], x2 = a[ 1], x3 = a[ 2], x4 = a[ 3],
+      y1 = a[ 4], y2 = a[ 5], y3 = a[ 6], y4 = a[ 7],
+      z1 = a[ 8], z2 = a[ 9], z3 = a[10], z4 = a[11];
+    a[12] += x1 * tx + y1 * ty + z1 * tz;
+    a[13] += x2 * tx + y2 * ty + z2 * tz;
+    a[14] += x3 * tx + y3 * ty + z3 * tz;
+    a[15] += x4 * tx + y4 * ty + z4 * tz;
+    return this;
+  }
+
+  rotate_x(ra) {
+    const a = this.a,
+      y1 = a[ 4], y2 = a[ 5], y3 = a[ 6], y4 = a[ 7],
+      z1 = a[ 8], z2 = a[ 9], z3 = a[10], z4 = a[11],
+      c = Math.cos(ra), s = Math.sin(ra);
+    a[ 4] = y1 * c + z1 *  s;
+    a[ 5] = y2 * c + z2 *  s;
+    a[ 6] = y3 * c + z3 *  s;
+    a[ 7] = y4 * c + z4 *  s;
+    a[ 8] = z1 * c + y1 * -s;
+    a[ 9] = z2 * c + y2 * -s;
+    a[10] = z3 * c + y3 * -s;
+    a[11] = z4 * c + y4 * -s;
+    return this;
+  }
+
+  rotate_y(ra) {
+    const a = this.a,
+      x1 = a[ 0], x2 = a[ 1], x3 = a[ 2], x4 = a[ 3],
+      z1 = a[ 8], z2 = a[ 9], z3 = a[10], z4 = a[11],
+      c = Math.cos(ra), s = Math.sin(ra);
+    a[ 0] = x1 * c + z1 * -s;
+    a[ 1] = x2 * c + z2 * -s;
+    a[ 2] = x3 * c + z3 * -s;
+    a[ 3] = x4 * c + z4 * -s;
+    a[ 8] = z1 * c + x1 *  s;
+    a[ 9] = z2 * c + x2 *  s;
+    a[10] = z3 * c + x3 *  s;
+    a[11] = z4 * c + x4 *  s;
+    return this;
+  }
+
+  rotate_z(ra) {
+    const a = this.a,
+      x1 = a[ 0], x2 = a[ 1], x3 = a[ 2], x4 = a[ 3],
+      y1 = a[ 4], y2 = a[ 5], y3 = a[ 6], y4 = a[ 7],
+      c = Math.cos(ra), s = Math.sin(ra);
+    a[ 0] = x1 * c + y1 *  s;
+    a[ 1] = x2 * c + y2 *  s;
+    a[ 2] = x3 * c + y3 *  s;
+    a[ 3] = x4 * c + y4 *  s;
+    a[ 4] = y1 * c + x1 * -s;
+    a[ 5] = y2 * c + x2 * -s;
+    a[ 6] = y3 * c + x3 * -s;
+    a[ 7] = y4 * c + x4 * -s;
+    return this;
+  }
+
+  scale(sx, sy, sz) {
+    const a = this.a;
+    a[ 0] *= sx; a[ 1] *= sx; a[ 2] *= sx; a[ 3] *= sx;
+    a[ 4] *= sy; a[ 5] *= sy; a[ 6] *= sy; a[ 7] *= sy;
+    a[ 8] *= sz; a[ 9] *= sz; a[10] *= sz; a[11] *= sz;
+    return this;
+  }
+
+  orthographic(left, right, bottom, top, near, far) {
+    const a = this.a,
+      sx = 1 / (right - left),
+      sy = 1 / (top - bottom),
+      sz = 1 / (near - far),
+      x1 = 2 * sx,
+      y2 = 2 * sy,
+      z3 = 2 * sz,
+      w1 = -(right + left) * sx,
+      w2 = -(top + bottom) * sy,
+      w3 = -(near + far) * sz;
+    a[ 0] = x1; a[ 1] =  0; a[ 2] =  0; a[ 3] =  0;
+    a[ 4] =  0; a[ 5] = y2; a[ 6] =  0; a[ 7] =  0;
+    a[ 8] =  0; a[ 9] =  0; a[10] = z3; a[11] =  0;
+    a[12] = w1; a[13] = w2; a[14] = w3; a[15] =  1;
+    return this;
+  }
+
+  perspective(fov, aspect, near, far) {
+    const a = this.a,
+      f = Math.tan(Math.PI / 2 - fov / 2),
+      sz = 1 / (near - far),
+      x1 = f / aspect,
+      y2 = f,
+      z3 = (near + far) * sz,
+      w3 = sz * near * far * 2;
+    a[ 0] = x1; a[ 1] =  0; a[ 2] =  0; a[ 3] =  0;
+    a[ 4] =  0; a[ 5] = y2; a[ 6] =  0; a[ 7] =  0;
+    a[ 8] =  0; a[ 9] =  0; a[10] = z3; a[11] = -1;
+    a[12] =  0; a[13] =  0; a[14] = w3; a[15] =  0;
+    return this;
+  }
 }
 
-const room_scenes = create_room_scenes();
+const canvas = document.createElement('canvas');
+gl = canvas.getContext('webgl', {stencil: true});
+if (!gl) {
+  throw new Error('Failed to initialize WebGL context');
+}
 
-const renderer = new THREE.WebGLRenderer({alpha: true});
-renderer.autoClear = false;
-renderer.setSize(256, 256);
-document.body.appendChild(renderer.domElement);
+const quality_label = document.getElementById('quality-label');
+const quality_slider = document.getElementById('quality');
 
-const pivot_x_speed = 0.002;
-const pivot_y_speed = 0.005;
+const v = {};
+v.pixel_limit = 2000;
 
-let pivot_x = 0;
-let pivot_y = 0;
+function resize() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  let ratio = window.devicePixelRatio;
+  ratio = Math.min(ratio * width, v.pixel_limit) / width;
+  ratio = Math.min(ratio * height, v.pixel_limit) / height;
+  canvas.width = width * ratio;
+  canvas.height = height * ratio;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
 
-const gl = renderer.getContext();
+function quality_update() {
+  const level = Number(quality_slider.value);
+  if (level < 1) { level = 1; }
+  if (level > 9) { level = 9; }
+  quality_label.textContent = level;
+  v.pixel_limit = level === 9 ? Infinity : Math.pow(2, level + 5);
+  resize();
+}
+quality_update();
+quality_slider.addEventListener('input', quality_update);
+window.addEventListener('resize', resize);
+document.body.appendChild(canvas);
 
-function render_room_scene(room_scene) {
+function create_shader(type, src) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, src);
+
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    throw new Error('Failed to compile shader: \n'
+      + gl.getShaderInfoLog(shader));
+  }
+
+  return shader;
+}
+
+function create_program(vert_src, frag_src) {
+  const vert_shader = create_shader(gl.VERTEX_SHADER, vert_src);
+  const frag_shader = create_shader(gl.FRAGMENT_SHADER, frag_src);
+
+  const program = gl.createProgram();
+  gl.attachShader(program, vert_shader);
+  gl.attachShader(program, frag_shader);
+
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    throw new Error('Failed to link program: \n'
+      + gl.getProgramInfoLog(program));
+  }
+
+  gl.deleteShader(vert_shader);
+  gl.deleteShader(frag_shader);
+
+  return program;
+}
+
+const room_vertices = [
+    0,   0, 100,
+   10,   0, 100,
+    0, 100, 100,
+   10, 100, 100,
+   90,   0, 100,
+   10,  10, 100,
+   90,  10, 100,
+  100,   0, 100,
+   90, 100, 100,
+  100, 100, 100,
+   10,  90, 100,
+   90,  90, 100,
+   10,  10,  90,
+   10,  90,  90,
+   90,  10,  90,
+   90,  90,  90,
+   10,  10, -20,
+   10,  90, -20,
+   10,  10, -120,
+   90,  10, -120,
+   90,  10, -20,
+   90,  90, -20,
+   10,  90, -120,
+   90,  90, -120,
+  -90,  10, -20,
+  -90,  10, -120,
+  -90,  90, -120,
+  -90,  90, -20,
+  190,  10, -20,
+  190,  10, -120,
+  190,  90, -120,
+  190,  90, -20,
+];
+const room_indexes = [
+  // front-lip-left
+   0,  1,  2,
+   2,  1,  3,
+  // front-lip-bottom
+   1,  4,  5,
+   5,  4,  6,
+  // front-lip-right
+   4,  7,  8,
+   8,  7,  9,
+  // front-lip-top
+  10, 11,  3,
+   3, 11,  8,
+  // inner-lip-left
+   5, 12, 10,
+  10, 12, 13,
+  // inner-lip-bottom
+   5,  6, 12,
+  12,  6, 14,
+  // inner-lip-right
+  14,  6, 15,
+  15,  6, 11,
+  // inner-lip-top
+  13, 15, 10,
+  10, 15, 11,
+  // inner-left
+  12, 16, 13,
+  13, 16, 17,
+  // inner-bottom
+  12, 14, 18,
+  18, 14, 19,
+  // inner-right
+  20, 14, 21,
+  21, 14, 15,
+  // inner-top
+  22, 23, 13,
+  13, 23, 15,
+  // inner-back-left-bottom
+  24, 16, 25,
+  25, 16, 18,
+  // inner-back-left-top
+  26, 22, 27,
+  27, 22, 17,
+  // inner-back-right-bottom
+  20, 28, 19,
+  19, 28, 29,
+  // inner-back-right-top
+  23, 30, 21,
+  21, 30, 31,
+  // inner-back
+  25, 29, 26,
+  26, 29, 30,
+];
+
+const c_silver = 0xd8d8d8;
+const c_pink = 0xfe90c9;
+const c_blue = 0x03a9f4;
+const c_white = 0xffffff;
+const c_gray = 0x808080;
+const c_yellow = 0xfef250;
+const c_red = 0xe60000;
+
+const mask_vertices = [
+    0,   0, 100,
+  100,   0, 100,
+    0, 100, 100,
+  100, 100, 100,
+];
+const mask_indexes = [
+  // front
+  0, 1, 2,
+  2, 1, 3,
+];
+const mask_colors = [
+  // front
+  c_white,
+];
+
+function c_mul(c, v) {
+  return (c >> 16) * v << 16 | (c >> 8 & 0xFF) * v << 8 | (c & 0xFF) * v;
+}
+
+function make_room_colors(c, vx, vy, vz) {
+  return [
+    // front-lip-left
+    c_mul(c_silver, vz),
+    // front-lip-bottom
+    c_mul(c_silver, vz),
+    // front-lip-right
+    c_mul(c_silver, vz),
+    // front-lip-top
+    c_mul(c_silver, vz),
+    // inner-lip-left
+    c_mul(c_silver, vx),
+    // inner-lip-bottom
+    c_mul(c_silver, vy),
+    // inner-lip-right
+    c_mul(c_silver, vx),
+    // inner-lip-top
+    c_mul(c_silver, vy),
+    // inner-left
+    c_mul(c, vx),
+    // inner-bottom
+    c_mul(c, vy),
+    // inner-right
+    c_mul(c, vx),
+    // inner-top
+    c_mul(c, vy),
+    // inner-back-left-bottom
+    c_mul(c, vy),
+    // inner-back-left-top
+    c_mul(c, vy),
+    // inner-back-right-bottom
+    c_mul(c, vy),
+    // inner-back-right-top
+    c_mul(c, vy),
+    // inner-back
+    c_mul(c, vz),
+  ];
+}
+
+const geometry_mode = gl.TRIANGLES;
+const geometry = [];
+const geocolors = [];
+function add_geometry(vertices, indexes, colors) {
+  const offset = geometry.length / 3;
+  for (let i = 0; i < indexes.length; i++) {
+    const index = indexes[i];
+    geometry.push(vertices[index*3]);
+    geometry.push(vertices[index*3+1]);
+    geometry.push(vertices[index*3+2]);
+  }
+  for (let i = 0; i < colors.length; i++) {
+    const color = colors[i];
+    for (let j = 0; j < 6; j++) {
+      geocolors.push(color >> 16);
+      geocolors.push(color >> 8 & 0xFF);
+      geocolors.push(color & 0xFF);
+    }
+  }
+  const length = geometry.length / 3 - offset;
+  return {offset, length};
+}
+// front, left, right
+const mask_geometry = add_geometry(mask_vertices, mask_indexes, mask_colors);
+function create_room(c, vx, vy, vz, rx, ry) {
+  const room_geometry = add_geometry(room_vertices, room_indexes, make_room_colors(c, vx, vy, vz));
+  return {room_geometry, mask_geometry, rx, ry};
+}
+
+const rooms = [];
+rooms[0] = create_room(c_pink, 0.90, 1.00, 0.95, 0, 0);
+rooms[1] = create_room(c_blue, 0.95, 1.00, 0.90, 0, -90);
+rooms[2] = create_room(c_white, 0.90, 1.00, 0.95, 0, -180);
+rooms[3] = create_room(c_gray, 0.95, 1.00, 0.90, 0, -270);
+rooms[4] = create_room(c_yellow, 0.90, 0.95, 1.00, -90, 0);
+rooms[5] = create_room(c_red, 0.90, 0.95, 1.00, 90, 0);
+
+const degrad = Math.PI / 180;
+v.fov = 90;
+v.near = 1;
+v.far = 2000;
+v.pos = [0, 0, -150];
+v.rot = [0, 0, 0];
+v.vel = [.3, .5, .4];
+v.scale = [1, 1, 1];
+v.matrix = new Mat4();
+v.update_matrix = function() {
+  const m = v.matrix;
+
+  m.perspective(v.fov * degrad, gl.canvas.width / gl.canvas.height, v.near, v.far);
+  m.translate(v.pos[0], v.pos[1], v.pos[2]);
+  m.rotate_x(v.rot[0] * degrad);
+  m.rotate_y(v.rot[1] * degrad);
+  m.rotate_z(v.rot[2] * degrad);
+  m.scale(v.scale[0], v.scale[1], v.scale[2]);
+  m.translate(-50, -50, -50);
+  // Operations stored in a matrix occur last-to-first
+}
+
+const vert_src = `
+attribute vec4 a_position;
+attribute vec4 a_color;
+
+uniform mat4 u_matrix;
+
+varying vec4 v_color;
+
+void main() {
+  gl_Position = u_matrix * a_position;
+
+  v_color = a_color;
+}`;
+
+const frag_src = `
+precision mediump float;
+
+varying vec4 v_color;
+
+void main() {
+  gl_FragColor = v_color;
+}`;
+
+const program = create_program(vert_src, frag_src);
+
+const a_position_loc = gl.getAttribLocation(program, 'a_position');
+const a_position_buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, a_position_buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometry), gl.STATIC_DRAW);
+
+const a_color_loc = gl.getAttribLocation(program, 'a_color');
+const a_color_buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(geocolors), gl.STATIC_DRAW);
+
+const u_matrix_loc = gl.getUniformLocation(program, 'u_matrix');
+
+const room_matrix = new Mat4();
+function render_room(room) {
+  room_matrix.copy(v.matrix);
+  room_matrix.translate(50, 50, 50);
+  room_matrix.rotate_y(room.ry * degrad);
+  room_matrix.rotate_x(room.rx * degrad);
+  room_matrix.translate(-50, -50, -50);
+  gl.uniformMatrix4fv(u_matrix_loc, false, room_matrix.a);
 
   gl.enable(gl.STENCIL_TEST);
   gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
@@ -168,77 +519,58 @@ function render_room_scene(room_scene) {
   gl.stencilFunc(gl.ALWAYS, 1, 0xFF);
   gl.stencilMask(0xFF);
 
-  const mask_scene = room_scene.mask.scene;
-  const mask_camera = room_scene.mask.camera;
-  const mask_pivot = room_scene.mask.pivot;
-  renderer.render(mask_scene, mask_camera);
-  renderer.clearDepth();
-  mask_pivot.rotation.x = pivot_x;
-  mask_pivot.rotation.y = pivot_y;
+  const maskgeo = room.mask_geometry;
+  gl.drawArrays(geometry_mode, maskgeo.offset, maskgeo.length);
+  gl.clear(gl.DEPTH_BUFFER_BIT);
 
   gl.stencilFunc(gl.EQUAL, 1, 0xFF);
   gl.stencilMask(0x00);
 
-  const boxes_scene = room_scene.boxes.scene;
-  const boxes_camera = room_scene.boxes.camera;
-  const boxes_pivot = room_scene.boxes.pivot;
-  renderer.render(boxes_scene, boxes_camera);
-  renderer.clearDepth();
-  boxes_pivot.rotation.x = pivot_x;
-  boxes_pivot.rotation.y = pivot_y;
+  const roomgeo = room.room_geometry;
+  gl.drawArrays(geometry_mode, roomgeo.offset, roomgeo.length);
+  gl.clear(gl.DEPTH_BUFFER_BIT);
 
   gl.stencilMask(0xFF);
   gl.disable(gl.STENCIL_TEST);
-
-  renderer.clearStencil();
+  gl.clear(gl.STENCIL_BUFFER_BIT);
 }
+
+gl.useProgram(program);
+
+gl.enableVertexAttribArray(a_position_loc);
+gl.bindBuffer(gl.ARRAY_BUFFER, a_position_buf);
+gl.vertexAttribPointer(a_position_loc, 3, gl.FLOAT, false, 0, 0);
+
+gl.enableVertexAttribArray(a_color_loc);
+gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buf);
+gl.vertexAttribPointer(a_color_loc, 3, gl.UNSIGNED_BYTE, true, 0, 0);
 
 function render() {
   requestAnimationFrame(render);
 
-  pivot_x += pivot_x_speed;
-  pivot_y += pivot_y_speed;
+  let rx = v.rot[0] + v.vel[0];
+  let ry = v.rot[1] + v.vel[1];
+  let rz = v.rot[2] + v.vel[2];
+  if (rx >= 360) { rx -= 360; }
+  if (ry >= 360) { ry -= 360; }
+  if (rz >= 360) { rz -= 360; }
+  v.rot[0] = rx;
+  v.rot[1] = ry;
+  v.rot[2] = rz;
 
-  renderer.clear();
-  for (let i = 0; i < room_scenes.length; i++) {
-    render_room_scene(room_scenes[i]);
+  gl.clearColor(1.0, 1.0, 1.0, 1.0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+
+  gl.enable(gl.CULL_FACE);
+  gl.enable(gl.DEPTH_TEST);
+
+  v.update_matrix();
+
+  for (let i = 0; i < rooms.length; i++) {
+    render_room(rooms[i]);
   }
 }
 
-const borderStyle = "2px solid black";
-function resize() {
-  const style = renderer.domElement.style;
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  if (width < height) {
-    renderer.setSize(width, width);
-    style.left = 0 + 'px';
-    style.top = ((height - width) >> 1) + 'px';
-    style.borderLeft = '';
-    style.borderRight = '';
-    style.borderTop = borderStyle;
-    style.borderBottom = borderStyle;
-  } else if (height < width) {
-    renderer.setSize(height, height);
-    style.left = ((width - height) >> 1) + 'px';
-    style.top = 0 + 'px';
-    style.borderLeft = borderStyle;
-    style.borderRight = borderStyle;
-    style.borderTop = '';
-    style.borderBottom = '';
-  } else {
-    renderer.setSize(width, height);
-    style.left = 0 + 'px';
-    style.top = 0 + 'px';
-    style.borderLeft = '';
-    style.borderRight = '';
-    style.borderTop = '';
-    style.borderBottom = '';
-  }
-}
-
-window.addEventListener('resize', resize, false);
-resize();
 render();
     </script>
   </body>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=320, initial-scale=1">
+    <meta charset="utf-8">
+<style>
+body, html {
+  min-width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.btn {
+  position: fixed;
+  left: 25px;
+  top: 25px;
+}
+
+.text {
+  transform:
+    translate(-50%, -50%)
+    translatey(25px)
+    scalex(75%);
+  width: max-content;
+  height: max-content;
+  position: relative;
+  left: 50%;
+  top: 50%;
+  text-align: center;
+  font-size: 64px;
+  font-family: monospace;
+}
+
+.top {
+  background: #f00;
+  width: 200px;
+  height: 200px;
+  border-radius: 200px;
+  transform:
+    translatex(50px)
+    translatey(var(--press))
+    scalex(125%);
+  overflow: hidden;
+}
+
+.topmid {
+  background: #d00;
+  height: calc(250px - var(--press));
+}
+
+.bot {
+  background: #ddd;
+  width: 250px;
+  height: 250px;
+  border-radius: 250px;
+  transform:
+    translatex(25px)
+    translatey(35px)
+    scalex(125%);
+}
+
+.botmid {
+  background: #aaa;
+  height: 275px;
+}
+
+.upside_down {
+  display: inline-block;
+  transform: scaley(-100%);
+  width: max-content;
+  height: max-content;
+}
+
+.cnt {
+  display: inline-block;
+  font-size: 48px;
+  width: max-content;
+  height: max-content;
+}
+</style>
+  </head>
+  <body>
+    <div id="vars">
+      <div class="btn bot botmid"></div>
+      <div class="btn bot"></div>
+      <div class="btn top topmid"></div>
+      <div class="btn top">
+        <div class="text">
+          <div class="upside_down">Button</div>
+          <br/>
+          <div class="cnt"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+function ease(x) {
+  return -(Math.cos(Math.PI * x) - 1) / 2;
+}
+
+var cnt_el = document.querySelector(".cnt");
+var cnt = 0;
+cnt_el.textContent = cnt;
+
+var vars = document.querySelector("#vars");
+vars.style = "--press: 0px;";
+var pressed = false, anim = 1,
+  anim_t = 0.05;
+function on_anim() {
+  var press;
+  if (pressed) {
+    press = 0 + 40 * (1-ease(1-anim));
+  } else {
+    press = 40 - 40 * (ease(anim));
+  }
+  vars.style = "--press: "+press+"px;";
+}
+
+function set_pressed(_pressed) {
+  pressed = _pressed;
+  anim = 0;
+}
+
+function on_press(e) {
+  e.preventDefault();
+  set_pressed(true);
+  cnt += 1;
+  cnt_el.textContent = cnt;
+}
+
+function on_unpress(e) {
+  e.preventDefault();
+  set_pressed(false);
+}
+
+let old_ts;
+function frame(ts) {
+  requestAnimationFrame(frame);
+
+  var delta = (ts - old_ts) / 1000;
+  old_ts = ts;
+
+  if (anim < 1.0) {
+    anim = Math.min(anim + delta / anim_t, 1.0);
+    on_anim();
+  }
+}
+
+requestAnimationFrame(ts => {
+  old_ts = ts;
+  frame(ts);
+});
+
+document.querySelectorAll(".top").forEach(e => {
+  e.addEventListener("mousedown", on_press);
+  e.addEventListener("mouseup", on_unpress);
+  e.addEventListener("touchstart", on_press);
+  e.addEventListener("touchend", on_unpress);
+});
+    </script>
+  </body>
+</html>
